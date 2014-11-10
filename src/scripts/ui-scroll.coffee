@@ -48,6 +48,8 @@ angular.module('ui.scroll', [])
 						isDatasource = (datasource) ->
 							angular.isObject(datasource) and datasource.get and angular.isFunction(datasource.get)
 
+
+
 						getValueChain = (targetScope, target) ->
 							return null if not targetScope
 							chain = target.match(/^([\w]+)\.(.+)$/)
@@ -59,6 +61,8 @@ angular.module('ui.scroll', [])
 						if !isDatasource datasource
 							datasource = $injector.get(datasourceName)
 							throw new Error "#{datasourceName} is not a valid datasource" unless isDatasource datasource
+
+
 
 						bufferSize = Math.max(3, +$attr.bufferSize || 10)
 						bufferPadding = -> viewport.outerHeight() * Math.max(0.1, +$attr.padding || 0.1) # some extra space to initate preload
@@ -401,10 +405,10 @@ angular.module('ui.scroll', [])
 						$scope.$watch datasource.revision,
 							-> reload()
 
-						if datasource.scope
-							eventListener = datasource.scope.$new()
-						else
-							eventListener = $scope.$new()
+						#if datasource.scope
+						#	eventListener = datasource.scope.$new()
+						#else
+						#	eventListener = $scope.$new()
 
 						$scope.$on '$destroy', ->
 							eventListener.$destroy()
@@ -412,57 +416,47 @@ angular.module('ui.scroll', [])
 							viewport.unbind 'scroll', scrollHandler
 							viewport.unbind 'mousewheel', wheelHandler
 
-						eventListener.$on "update.items", (event, locator, newItem)->
-							if angular.isFunction locator
-								((wrapper)->
-									locator wrapper.scope
-								) wrapper for wrapper in buffer
-							else
-								if 0 <= locator-first-1 < buffer.length
-									buffer[locator-first-1].scope[itemName] = newItem
-							null
 
-						eventListener.$on "delete.items", (event, locator)->
-							if angular.isFunction locator
-								temp = []
-								temp.unshift item for item in buffer
-								((wrapper)->
-									if locator wrapper.scope
-										removeFromBuffer temp.length-1-i, temp.length-i
+						datasource.scope = $scope.$new() unless datasource.scope
+
+						angular.extend(datasource.scope, {
+							insert: (locator, item) ->
+								inserted = []
+								if angular.isFunction locator
+									throw new Error('not implemented - Insert with locator function')
+								else
+									if 0 <= locator-first-1 < buffer.length
+										inserted.push (insert locator, item)
+										next++
+								item.scope.$index = first + i for item,i in buffer
+								adjustBuffer(null, false, inserted)
+
+							update: (locator, item) ->
+								if angular.isFunction locator
+									((wrapper)->
+										locator wrapper.scope
+									) wrapper for wrapper in buffer
+								else
+									if 0 <= locator-first-1 < buffer.length
+										buffer[locator-first-1].scope[itemName] = item
+								null
+
+							delete: (locator) ->
+								if angular.isFunction locator
+									temp = []
+									temp.unshift item for item in buffer
+									((wrapper)->
+										if locator wrapper.scope
+											removeFromBuffer temp.length-1-i, temp.length-i
+											next--
+									) wrapper for wrapper,i in temp
+								else
+									if 0 <= locator-first-1 < buffer.length
+										removeFromBuffer locator-first-1, locator-first
 										next--
-								) wrapper for wrapper,i in temp
-							else
-								if 0 <= locator-first-1 < buffer.length
-									removeFromBuffer locator-first-1, locator-first
-									next--
-
-							item.scope.$index = first + i for item,i in buffer
-							adjustBuffer(null, false)
-
-						eventListener.$on "insert.item", (event, locator, item)->
-							inserted = []
-							if angular.isFunction locator
-#								temp = []
-#								temp.unshift item for item in buffer
-#								((wrapper)->
-#									if newItems = locator wrapper.scope
-#										insert = (index, newItem) ->
-#											insert index, newItem
-#											next++
-#										if isArray newItems
-#											inserted.push(insert i+j, item) for item,j in newitems
-#										else
-#											inserted.push (insert i, newItems)
-#								) wrapper for wrapper,i in temp
-								throw new Error('not implemented - Insert with locator function')
-							else
-								if 0 <= locator-first-1 < buffer.length
-									inserted.push (insert locator, item)
-									next++
-
-							item.scope.$index = first + i for item,i in buffer
-							adjustBuffer(null, false, inserted)
-
+								item.scope.$index = first + i for item,i in buffer
+								adjustBuffer(null, false)
+						})
 		])
 
 ###

@@ -29,16 +29,16 @@ angular.module('application', ['ui.scroll', 'ui.scroll.jqlite'])
 			current += 1
 
 		$rootScope.delete = ->
-			scope.$broadcast 'delete.items', (scope) ->
+			scope.delete (scope) ->
 				scope.item[9] == '1'
 
 		$rootScope.update = ->
-			scope.$broadcast 'update.items', (scope) ->
+			scope.update (scope) ->
 				if scope.item[9] == '1'
 					scope.item = scope.item + ' update'
 
 		$rootScope.insert = ->
-			scope.$broadcast 'insert.item', 2, "inserted value"
+			scope.insert(2, "inserted value")
 
 		$rootScope.parseInt = (value) -> parseInt value, 10
 
